@@ -1,28 +1,22 @@
 # JM Tech Tools
+A Manifest V3 browser extension with Cloudflare Worker API, D1 licensing, remote configuration, release metadata, and protected admin dashboard.
 
-Premium browser-extension toolkit with a Cloudflare Worker API and D1-backed licensing/configuration.
+## Included
+- Premium extension popup with license activation
+- Worker API: health, config, license activation/validation, release info
+- Protected admin dashboard: create/revoke licenses, edit remote config, publish release metadata
+- D1 schema, Wrangler config, GitHub Actions deployment
 
-## Project layout
-- `extension/` — browser extension (Manifest V3) starter
-- `worker/` — Cloudflare Worker API
-- `migrations/` — D1 SQL migrations
-- `cloudflare/wrangler.toml` — Worker and D1 configuration
+## Configure
+1. Set the exact D1 database ID in `cloudflare/wrangler.toml`.
+2. Add GitHub Actions secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and a long random `ADMIN_TOKEN`.
+3. Push to main or manually run the deployment workflow.
 
-## Setup
-1. Install Node.js 20+.
-2. Run `npm install`.
-3. Replace the placeholder D1 database ID in `cloudflare/wrangler.toml` with the verified ID from Cloudflare.
-4. Run `npm run db:migrate:local` then `npm run dev`.
+Open `https://<worker-domain>/admin/` and enter the private ADMIN_TOKEN. Keep all tokens and license keys out of source control.
 
-## GitHub Actions deployment
-Add repository Actions secrets:
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ACCOUNT_ID`
+## Local development
+`npm install`, `npm run db:migrate:local`, `npm run dev`.
 
-The deploy workflow runs D1 migrations and deploys the Worker after checking that the D1 ID is configured.
+Load the `extension/` folder as an unpacked Manifest V3 extension in a compatible Chromium browser. Set the Worker API URL in `extension/popup.js`.
 
-## Security
-Never commit API tokens, passwords, private keys, or license secrets. Keep secrets in GitHub Actions or Cloudflare secrets.
-
-## Current scope
-This is the secure starter foundation. The original Boost/Campaign extension source must be added and reviewed before those features can be integrated or claimed as working.
+The JM Tech Tools platform foundation is included. Tool-specific modules/actions are not fabricated; implement them when their exact requirements are specified.

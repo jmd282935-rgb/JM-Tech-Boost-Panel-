@@ -2,39 +2,84 @@ name: Deploy Cloudflare Worker
 on:
   push:
     branches: [main]
-    paths: ["worker/**","admin/**","cloudflare/**","migrations/**","package.json",".github/workflows/deploy.yml"]
+    paths:
+      - "worker/**"
+      - "admin/**"
+      - "cloudflare/**"
+      - "migrations/**"
+      - "extension/**"
+      - "package.json"
+      - "package-lock.json"
   workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-      - run: npm install
-      - name: Validate secrets and D1 ID
+
+      - name: Validate deployment secrets
         env:
           CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         run: |
-          test -n "$CF_TOKEN" || (echo "Missing CLOUDFLARE_API_TOKEN" && exit 1)
-          test -n "$CF_ACCOUNT" || (echo "Missing CLOUDFLARE_ACCOUNT_ID" && exit 1)
-          test -n "$ADMIN_TOKEN" || (echo "Missing ADMIN_TOKEN" && exit 1)
-          if grep -q "REPLACE_WITH_VERIFIED_D1_DATABASE_ID" cloudflare/wrangler.toml; then echo "Set verified D1 database_id"; exit 1; fi
+          set -euo pipefail
+          test -n "$CF_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN secret"; exit 1; }
+          test -n "$CF_ACCOUNT" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID secret"; exit 1; }
+          test -n "$ADMIN_TOKEN" || { echo "::error::Missing ADMIN_TOKEN secret"; exit 1; }
+
+      - name: Resolve D1 database ID automatically
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          RESPONSE=$(curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer $CF_TOKEN" \
+            -H "Content-Type: application/json" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/d1/database")
+          DB_ID=$(printf '%s' "$RESPONSE" | jq -r '
+            if .success != true then empty
+            else ([.result[] | select(.name == "jm-tech-tools-db")] |
+              if length == 1 then .[0].uuid else empty end)
+            end')
+          if [ -z "$DB_ID" ] || [ "$DB_ID" = "null" ]; then
+            echo "::error::Could not find exactly one D1 database named jm-tech-tools-db. Check the token has D1 Read permission and the database exists in this account."
+            exit 1
+          fi
+          sed -i "s/REPLACE_WITH_VERIFIED_D1_DATABASE_ID/$DB_ID/" cloudflare/wrangler.toml
+          echo "Resolved D1 database ID for jm-tech-tools-db."
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: TypeScript check
+        run: npm run typecheck --if-present
+
       - name: Apply D1 migrations
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: d1 migrations apply jm-tech-tools-db --remote --config cloudflare/wrangler.toml
+
       - name: Set admin token
         env:
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: printf '%s' "$ADMIN_TOKEN" | npx wrangler secret put ADMIN_TOKEN --config cloudflare/wrangler.toml
+
       - name: Deploy Worker and admin assets
         uses: cloudflare/wrangler-action@v3
         with:

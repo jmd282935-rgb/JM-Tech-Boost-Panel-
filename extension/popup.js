@@ -1,1 +1,4 @@
-document.getElementById("status").textContent = "Extension starter loaded";
+const $=id=>document.getElementById(id);let deviceId="";
+async function init(){const s=await chrome.storage.local.get(["apiUrl","licenseKey","deviceId"]);$("api").value=s.apiUrl||"";$("license").value=s.licenseKey||"";deviceId=s.deviceId||crypto.randomUUID();await chrome.storage.local.set({deviceId});}
+$("activate").onclick=async()=>{const api=$("api").value.trim().replace(/\/$/,"");const licenseKey=$("license").value.trim();if(!api||!licenseKey){$("status").textContent="Enter API URL and license key.";return}$("status").textContent="Connecting…";try{const r=await fetch(api+"/api/license/activate",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({licenseKey,deviceId})});const d=await r.json();if(!r.ok)throw Error(d.error||"Activation failed");await chrome.storage.local.set({apiUrl:api,licenseKey,activated:true});$("status").textContent=`Activated · ${d.plan}`;$("tools").hidden=false}catch(e){$("status").textContent=e.message}};
+init();

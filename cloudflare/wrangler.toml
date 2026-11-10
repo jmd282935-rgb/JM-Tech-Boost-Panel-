@@ -3,6 +3,11 @@ main = "../worker/src/index.ts"
 compatibility_date = "2026-11-10"
 workers_dev = true
 
+[assets]
+directory = "../admin"
+binding = "ASSETS"
+run_worker_first = true
+
 [[d1_databases]]
 binding = "DB"
 database_name = "jm-tech-tools-db"

@@ -1,44 +1,40 @@
 name: Deploy Cloudflare Worker
-
 on:
   push:
     branches: [main]
-    paths:
-      - "worker/**"
-      - "cloudflare/**"
-      - "migrations/**"
-      - "package.json"
-      - ".github/workflows/deploy.yml"
+    paths: ["worker/**","admin/**","cloudflare/**","migrations/**","package.json",".github/workflows/deploy.yml"]
   workflow_dispatch:
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Check deployment configuration
-        env:
-          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          test -n "$CF_TOKEN" || (echo "Missing CLOUDFLARE_API_TOKEN" && exit 1)
-          test -n "$CF_ACCOUNT" || (echo "Missing CLOUDFLARE_ACCOUNT_ID" && exit 1)
-          grep -q "REPLACE_WITH_VERIFIED_D1_DATABASE_ID" cloudflare/wrangler.toml && (echo "Set the verified D1 database_id before deployment" && exit 1) || true
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-      - name: Install dependencies
-        run: npm install
+      - run: npm install
+      - name: Validate secrets and D1 ID
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+        run: |
+          test -n "$CF_TOKEN" || (echo "Missing CLOUDFLARE_API_TOKEN" && exit 1)
+          test -n "$CF_ACCOUNT" || (echo "Missing CLOUDFLARE_ACCOUNT_ID" && exit 1)
+          test -n "$ADMIN_TOKEN" || (echo "Missing ADMIN_TOKEN" && exit 1)
+          if grep -q "REPLACE_WITH_VERIFIED_D1_DATABASE_ID" cloudflare/wrangler.toml; then echo "Set verified D1 database_id"; exit 1; fi
       - name: Apply D1 migrations
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: d1 migrations apply jm-tech-tools-db --remote --config cloudflare/wrangler.toml
-      - name: Deploy Worker
+      - name: Set admin token
+        env:
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+        run: printf '%s' "$ADMIN_TOKEN" | npx wrangler secret put ADMIN_TOKEN --config cloudflare/wrangler.toml
+      - name: Deploy Worker and admin assets
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

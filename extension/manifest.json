@@ -5,11 +5,6 @@
   "description": "Premium browser tools by JM Tech.",
   "permissions": ["storage", "activeTab"],
   "host_permissions": ["https://*.facebook.com/*", "https://*.workers.dev/*"],
-  "action": {
-    "default_title": "JM Tech Tools",
-    "default_popup": "popup.html"
-  },
-  "background": {
-    "service_worker": "background.js"
-  }
+  "action": {"default_title": "JM Tech Tools", "default_popup": "popup.html"},
+  "background": {"service_worker": "background.js"}
 }

@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>JM Tech Tools Admin</title><link rel="stylesheet" href="/admin.css"></head>
+<body><main class="wrap"><header><div class="logo">JM</div><div><h1>JM Tech Tools</h1><p>Control Center</p></div><span class="pill">ADMIN</span></header>
+<section class="panel" id="auth"><label>Admin access token<input id="token" type="password" placeholder="Paste ADMIN_TOKEN"></label><button id="connect">Connect</button><p id="notice">Enter your private admin token to manage the platform.</p></section>
+<div id="app" hidden>
+<section class="grid"><article class="panel"><h2>Platform status</h2><p id="health">Not checked</p><button id="refresh">Refresh status</button></article><article class="panel"><h2>Create license</h2><label>Plan<input id="plan" value="premium"></label><label>Max devices<input id="devices" type="number" min="1" max="20" value="1"></label><label>Expiry (optional)<input id="expiry" type="datetime-local"></label><button id="create">Generate license</button><pre id="newkey"></pre></article></section>
+<section class="panel"><div class="heading"><h2>Licenses</h2><button id="load">Reload</button></div><div id="licenses">No licenses loaded.</div></section>
+<section class="panel"><h2>Remote configuration</h2><label>Config key<input id="configKey" placeholder="example: maintenance"></label><label>Config value<textarea id="configValue" rows="3" placeholder="false"></textarea></label><button id="saveConfig">Save config</button></section>
+<section class="panel"><h2>Publish release metadata</h2><label>Version<input id="version" placeholder="1.0.1"></label><label>Download URL<input id="downloadUrl" placeholder="https://..."></label><label>Release notes<textarea id="notes" rows="2"></textarea></label><button id="publish">Publish release</button></section>
+</div></main><script src="/admin.js"></script></body></html>
